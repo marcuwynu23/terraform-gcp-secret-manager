@@ -76,16 +76,30 @@ sequenceDiagram
 
 Reference this repository as a Terraform module in your own configurations:
 
-```hcl
-module "secret_manager" {
-  source = "github.com/marcuwynu23/terraform-gcp-secret-manager?ref=main"
-
-  project_id  = var.project_id
-  region      = "us-central1"
-  secret_id   = "my-api-key"
-  secret_data = var.secret_data
-}
-```
+> **Option 1**: Terraform Registry (recommended)
+> ```hcl
+> module "secret-manager" {
+>   source  = "marcuwynu23/secret-manager/gcp"
+>   version = "1.0.0"
+>
+>   project_id  = var.project_id
+>   region      = "us-central1"
+>   secret_id   = "my-api-key"
+>   secret_data = var.secret_data
+> }
+> ```
+>
+> **Option 2**: GitHub source
+> ```hcl
+> module "secret-manager" {
+>   source = "github.com/marcuwynu23/terraform-gcp-secret-manager?ref=main"
+>
+>   project_id  = var.project_id
+>   region      = "us-central1"
+>   secret_id   = "my-api-key"
+>   secret_data = var.secret_data
+> }
+> ```
 
 ## Variables
 
