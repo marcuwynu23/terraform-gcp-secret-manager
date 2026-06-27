@@ -15,6 +15,6 @@ output "secret_version" {
 
 output "secret_data" {
   description = "The secret data (sensitive)"
-  value       =  google_secret_manager_secret_version.my_secret_version.secret_data
+  value       = google_secret_manager_secret_version.my_secret_version.secret_data
   sensitive   = true
 }
