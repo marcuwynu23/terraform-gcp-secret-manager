@@ -1,120 +1,106 @@
-# Google Cloud Secret Manager - Terraform Module
+# terraform-gcp-secret-manager
 
-A Terraform module to create and manage secrets in **Google Cloud Secret Manager**.
+This Terraform project provisions a secret in **Google Cloud Secret Manager**.
 
 ## Architecture
 
+### Flowchart
 ```mermaid
-flowchart LR
-    A[terraform apply] --> B[Terraform Provider]
-    B --> C[Google Secret Manager API]
-    C --> D[google_secret_manager_secret]
-    C --> E[google_secret_manager_secret_version]
-    D --> F[Secret Container]
-    E --> F
+graph TD
+    A[User] -->|terraform apply| B(Terraform)
+    B -->|Auth via gcloud ADC| C{GCP API}
+    C -->|Create| D[Secret Container]
+    C -->|Store| E[Secret Version]
+    D -->|Replication| F[Auto Replicate]
 ```
 
+### Sequence Diagram
 ```mermaid
 sequenceDiagram
     participant U as User
     participant T as Terraform
-    participant G as GCP API
-    participant SM as Secret Manager
+    participant G as gcloud CLI
+    participant API as GCP Secret Manager API
 
+    U->>G: gcloud auth application-default login
+    G-->>U: Authentication Success
     U->>T: terraform apply
-    T->>G: Authenticate (gcloud auth)
-    G-->>T: Access Token
-    T->>G: Create google_secret_manager_secret
-    G->>SM: Create Secret Container
-    SM-->>G: Secret ID
-    G-->>T: Resource Created
-    T->>G: Create google_secret_manager_secret_version
-    G->>SM: Store Secret Value
-    SM-->>G: Version ID
-    G-->>T: Resource Created
-    T-->>U: Apply Complete
+    T->>API: Authenticate using ADC
+    T->>API: Plan & Create Resources
+    API-->>T: Secret Created
+    T-->>U: Outputs (Secret ID, Version)
 ```
 
-## Specifications
-
-- Creates a secret container with auto-replication
-- Stores the secret value as the first version
-- Supports all GCP regions (Free Tier: `us-west1`, `us-central1`, `us-east1`)
-- Secret data is marked sensitive and never displayed in output
+## Secret Specifications
+- **Replication**: Auto-replicated across regions.
+- **Secret Data**: Marked as sensitive, never displayed in output.
+- **Regions**: All GCP regions supported (Free Tier: `us-west1`, `us-central1`, `us-east1`).
 
 ## Prerequisites
-
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
-- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.0
+1.  **Google Cloud SDK**: [Installed and initialized](https://cloud.google.com/sdk/docs/install).
+2.  **Terraform**: [Installed](https://developer.hashicorp.com/terraform/downloads).
 
 ## Setup & Deployment
 
-```bash
-# Authenticate with Google Cloud
-gcloud auth application-default-login
+1.  **Enable the Secret Manager API**:
+    ```bash
+    gcloud services enable secretmanager.googleapis.com
+    ```
 
-# Set your GCP project
-gcloud config set project YOUR_PROJECT_ID
+2.  **Authenticate and Select Project**:
+    Instead of using a service account JSON file, this project uses your local `gcloud` credentials.
+    ```bash
+    # Authenticate
+    gcloud auth application-default login
 
-# Enable the Secret Manager API
-gcloud services enable secretmanager.googleapis.com
+    # Select your project
+    gcloud config set project your-project-id
+    ```
 
-# Create terraform.tfvars from example
-cp terraform.tfvars.example terraform.tfvars
+3.  **Configure Variables**:
+    Create a `terraform.tfvars` file based on the example:
+    ```hcl
+    project_id  = "your-project-id"
+    region      = "us-central1"
+    secret_id   = "my-api-key"
+    secret_data = "your-super-secret-value"
+    ```
 
-# Initialize and apply
-terraform init
-terraform apply
-```
+4.  **Deploy**:
+    ```bash
+    terraform init
+    terraform apply
+    ```
 
-## Module Usage
+## Usage as a Module
+
+Reference this repository as a Terraform module in your own configurations:
 
 ```hcl
 module "secret_manager" {
   source = "github.com/marcuwynu23/terraform-gcp-secret-manager?ref=main"
 
-  project_id  = "my-gcp-project"
+  project_id  = var.project_id
   region      = "us-central1"
-  secret_id   = "api-key"
-  secret_data = "supersecretvalue"
+  secret_id   = "my-api-key"
+  secret_data = var.secret_data
 }
 ```
 
-## Inputs
+## Variables
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| project_id | The GCP project ID | `string` | - | yes |
-| region | The GCP region | `string` | `us-central1` | no |
-| secret_id | The ID of the secret to create | `string` | `my-api-key` | no |
-| secret_data | The secret data value | `string` | - | yes |
+| Variable | Description | Type | Default |
+|----------|-------------|------|---------|
+| `project_id` | GCP project ID | `string` | (required) |
+| `region` | GCP region (free tier: us-west1, us-central1, us-east1) | `string` | `"us-central1"` |
+| `secret_id` | Secret ID to create | `string` | `"my-api-key"` |
+| `secret_data` | Secret data value | `string` | (required) |
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| secret_id | The ID of the created secret |
-| secret_name | The full resource name of the secret |
-| secret_version | The version of the created secret |
-| secret_data | The secret data (sensitive) |
-
-## Resources Created
-
-- `google_secret_manager_secret.my_secret` — Secret container
-- `google_secret_manager_secret_version.my_secret_version` — Secret version with value
-
-## Cleanup
-
-```bash
-terraform destroy
-```
-
-## Troubleshooting
-
-- **Secret Manager API not enabled** — Run `gcloud services enable secretmanager.googleapis.com`
-- **Permission denied** — Ensure your account has `roles/secretmanager.admin` IAM role
-- **Secret already exists** — Choose a different `secret_id` or delete the existing secret
-
-## License
-
-MIT
+| Output | Description |
+|--------|-------------|
+| `secret_id` | The ID of the created secret |
+| `secret_name` | The full resource name of the secret |
+| `secret_version` | The version of the created secret |
+| `secret_data` | The secret data (sensitive) |
