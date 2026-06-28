@@ -1,0 +1,56 @@
+name: CD - GCP Secret Manager (Apply / Destroy)
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: Terraform operation
+        required: true
+        type: choice
+        options:
+          - apply
+          - destroy
+        default: apply
+      project_id:
+        description: GCP project ID
+        required: true
+        type: string
+      region:
+        description: GCP region
+        required: true
+        type: string
+        default: us-central1
+      secret_id:
+        description: The ID of the secret to create
+        required: true
+        type: string
+        default: my-api-key
+
+env:
+  TF_VAR_secret_data: ${{ secrets.SECRET_DATA }}
+
+jobs:
+  provision:
+    name: Terraform ${{ github.event.inputs.command }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Plan
+        run: |
+          terraform plan ${{ github.event.inputs.command == 'destroy' && '-destroy' || '' }} \
+            -var="project_id=${{ github.event.inputs.project_id }}" \
+            -var="region=${{ github.event.inputs.region }}" \
+            -var="secret_id=${{ github.event.inputs.secret_id }}"
+      - name: Terraform Apply / Destroy
+        run: |
+          terraform ${{ github.event.inputs.command }} -auto-approve \
+            -var="project_id=${{ github.event.inputs.project_id }}" \
+            -var="region=${{ github.event.inputs.region }}" \
+            -var="secret_id=${{ github.event.inputs.secret_id }}"
